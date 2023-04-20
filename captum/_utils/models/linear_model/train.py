@@ -126,6 +126,7 @@ def sgd_train_linear_model(
     model._construct_model_params(
         in_features=x.shape[1],
         out_features=y.shape[1] if len(y.shape) == 2 else 1,
+        device=x.device,
         **construct_kwargs,
     )
     model.train()
@@ -144,12 +145,16 @@ def sgd_train_linear_model(
             if model.linear.bias is not None:
                 model.linear.bias.zero_()
 
+    model.linear.to(device)
+
     with torch.enable_grad():
         optim = torch.optim.SGD(model.parameters(), lr=initial_lr)
         if reduce_lr:
             scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
                 optim, factor=0.5, patience=patience, threshold=threshold
             )
+        else:
+            scheduler = None
 
         t1 = time.time()
         epoch = 0
@@ -242,6 +247,7 @@ def sklearn_train_linear_model(
     construct_kwargs: Dict[str, Any],
     sklearn_trainer: str = "Lasso",
     norm_input: bool = False,
+    alpha = None,
     **fit_kwargs,
 ):
     r"""

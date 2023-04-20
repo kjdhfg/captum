@@ -527,7 +527,8 @@ class LimeBase(PerturbationAttribution):
                 combined_interp_inps, combined_outputs, combined_sim
             )
             self.interpretable_model.fit(DataLoader(dataset, batch_size=batch_count))
-            return self.interpretable_model.representation()
+            rep = self.interpretable_model.representation()
+            return torch.max(rep,torch.tensor([0.0]).to(rep.device))
 
     def _evaluate_batch(
         self,
@@ -1188,6 +1189,9 @@ class Lime(LimeBase):
             show_progress=show_progress,
             **kwargs,
         )
+
+        coefs = torch.max(coefs,torch.tensor([0.]).to(coefs.device))
+
         if return_input_shape:
             return self._convert_output_shape(
                 formatted_inputs,
@@ -1236,8 +1240,7 @@ class Lime(LimeBase):
         ]
         for tensor_ind in range(len(formatted_inp)):
             for single_feature in range(num_interp_features):
-                attr[tensor_ind] += (
-                    coefs[single_feature].item()
-                    * (feature_mask[tensor_ind] == single_feature).float()
-                )
+                attr[tensor_ind] += coefs[single_feature].item() * (
+                    feature_mask[tensor_ind] == single_feature
+                ).float().to(attr[0].device)
         return _format_output(is_inputs_tuple, tuple(attr))
